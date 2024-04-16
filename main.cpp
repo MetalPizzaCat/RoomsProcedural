@@ -2,7 +2,10 @@
 #include <memory>
 #include <iostream>
 #include <random>
-
+/**
+ * @brief Random value generator. My attempt at replicating Random class from c# to not have to deal with c++ random stuff
+ *
+ */
 class Random
 {
 
@@ -29,7 +32,8 @@ public:
 enum RoomNodeDrawingFlags
 {
     ERNDT_DrawBackground = 1,
-    ERNDT_DrawRoom = 2
+    ERNDT_DrawRoom = 2,
+    ERNDT_DrawCorridors = 4
 };
 
 class Node
@@ -38,14 +42,55 @@ private:
     std::unique_ptr<Node> m_left = std::unique_ptr<Node>(nullptr);
     std::unique_ptr<Node> m_right = std::unique_ptr<Node>(nullptr);
 
+    /**
+     * @brief Size of the segment
+     *
+     */
     sf::Vector2f m_size;
-    const sf::Vector2f m_minSize;
+    /**
+     * @brief Minimum size of the segment
+     *
+     */
+    sf::Vector2f m_minSize;
+    /**
+     * @brief Rectangle used to draw this partition
+     *
+     */
     sf::RectangleShape m_rect;
+    /**
+     * @brief Position of this segment relative to the root
+     *
+     */
     sf::Vector2f m_position;
 
+    /**
+     * @brief Rectangle used to represent the actual room. Only useful for leafs
+     *
+     */
     sf::RectangleShape m_room;
+    /**
+     * @brief Position of the room relative to the root node
+     *
+     */
     sf::Vector2f m_roomPosition;
+
+    /**
+     * @brief Rectangle used to connect children
+     *
+     */
+    sf::RectangleShape m_corridor;
+
+    /**
+     * @brief Random value generator. Passed this way because c++ has horrible random value generators
+     *
+     */
     Random *m_random;
+
+    /**
+     * @brief Whether this segment was split vertically or horizontally during the split process. Useless on leafs
+     *
+     */
+    bool m_splitVertical = false;
 
 public:
     explicit Node(sf::Vector2f size,
@@ -73,28 +118,36 @@ public:
             m_room.setPosition(m_roomPosition + m_position);
             return;
         }
-        bool vertSplit = m_random->nextBool();
-        if (vertSplit)
+        m_splitVertical = m_random->nextBool();
+        sf::Vector2f nodeSize;
+        sf::Vector2f leftNodePosition;
+        if (m_splitVertical)
         {
-            sf::Vector2f nodeSize = sf::Vector2f(m_size.x / 2.f, m_size.y);
-
-            
-            m_left = std::make_unique<Node>(nodeSize, m_minSize, m_position, m_random);
-            m_right = std::make_unique<Node>(nodeSize, m_minSize, m_position + sf::Vector2f(m_size.x / 2.f, 0), m_random);
+            nodeSize = sf::Vector2f(m_size.x / 2.f, m_size.y);
+            leftNodePosition = m_position + sf::Vector2f(m_size.x / 2.f, 0);
+            m_corridor = sf::RectangleShape(sf::Vector2f(m_size.x / 2.f, 5.f));
+            m_corridor.setPosition(m_position + sf::Vector2f(m_size.x / 4.f, m_size.y / 2.f));
         }
         else
         {
-            sf::Vector2f nodeSize = sf::Vector2f(m_size.x, m_size.y / 2.f);
-
-            
-            m_left = std::make_unique<Node>(nodeSize, m_minSize, m_position, m_random);
-            m_right = std::make_unique<Node>(nodeSize, m_minSize, m_position + sf::Vector2f(0, m_size.y / 2.f), m_random);
+            nodeSize = sf::Vector2f(m_size.x, m_size.y / 2.f);
+            leftNodePosition = m_position + sf::Vector2f(0, m_size.y / 2.f);
+            m_corridor = sf::RectangleShape(sf::Vector2f(5.f, m_size.y / 2.f));
+            m_corridor.setPosition(m_position + sf::Vector2f(m_size.x / 2.f, m_size.y / 4.f));
         }
+        m_left = std::make_unique<Node>(nodeSize, m_minSize, m_position, m_random);
+        m_right = std::make_unique<Node>(nodeSize, m_minSize, leftNodePosition, m_random);
 
         m_right->split();
         m_left->split();
     }
 
+    /**
+     * @brief Draws the segment and it's children on screen
+     *
+     * @param window Renderer
+     * @param flags Flags that define which parts will be drawn
+     */
     void draw(sf::RenderWindow &window, int8_t flags)
     {
 
@@ -103,6 +156,11 @@ public:
         {
             m_right->draw(window, flags);
             m_left->draw(window, flags);
+            if (flags & RoomNodeDrawingFlags::ERNDT_DrawCorridors)
+            {
+                window.draw(m_corridor);
+            }
+
             return;
         }
         if (flags & RoomNodeDrawingFlags::ERNDT_DrawBackground)
@@ -122,9 +180,9 @@ int main()
     sf::RenderWindow window(sf::VideoMode(800, 800), "SFML works!");
 
     Random random;
-    Node root = Node(sf::Vector2f(128 * 6, 128 * 6), sf::Vector2f(64, 64), sf::Vector2f(0, 0), &random);
+    Node root(sf::Vector2f(128 * 6, 128 * 6), sf::Vector2f(64, 64), sf::Vector2f(0, 0), &random);
     root.split();
-    int8_t flags = RoomNodeDrawingFlags::ERNDT_DrawBackground | RoomNodeDrawingFlags::ERNDT_DrawRoom;
+    int8_t flags = RoomNodeDrawingFlags::ERNDT_DrawBackground | RoomNodeDrawingFlags::ERNDT_DrawRoom | RoomNodeDrawingFlags::ERNDT_DrawCorridors;
     while (window.isOpen())
     {
         for (auto event = sf::Event{}; window.pollEvent(event);)
@@ -142,6 +200,10 @@ int main()
                 if (event.key.code == sf::Keyboard::E)
                 {
                     flags ^= RoomNodeDrawingFlags::ERNDT_DrawRoom;
+                }
+                if (event.key.code == sf::Keyboard::T)
+                {
+                    flags ^= RoomNodeDrawingFlags::ERNDT_DrawCorridors;
                 }
             }
         }
