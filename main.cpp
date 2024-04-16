@@ -47,29 +47,6 @@ private:
     sf::Vector2f m_roomPosition;
     Random *m_random;
 
-    std::unique_ptr<Node> generateSplitNode(bool move)
-    {
-        // bool splitDir = m_random->nextBool();
-        // sf::Vector2f newSize = splitDir ? sf::Vector2f(m_size.x / 2.f, m_size.y) : sf::Vector2f(m_size.x, m_size.y / 2.f);
-        // sf::Vector2f newPosition = m_position + (splitDir ? sf::Vector2f(m_size.x / 2.f, 0) : sf::Vector2f(0, m_size.y / 2.f));
-        // return std::make_unique<Node>(newSize, m_minSize, move ? newPosition : m_position, m_random);
-
-        bool vertSplit = rand() % 2 - 1; 
-        sf::Vector2f newSize;
-        sf::Vector2f newPosition;
-        if (vertSplit)
-        {
-            newSize = sf::Vector2f(m_size.x / 2.f, m_size.y);
-            newPosition = m_position + sf::Vector2f(m_size.x / 2.f, 0);
-        }
-        else
-        {
-            newSize = sf::Vector2f(m_size.x, m_size.y / 2.f);
-            newPosition = m_position + sf::Vector2f(0, m_size.y / 2.f);
-        }
-        return std::make_unique<Node>(newSize, m_minSize, move ? newPosition : m_position, m_random);
-    }
-
 public:
     explicit Node(sf::Vector2f size,
                   sf::Vector2f minSize,
@@ -94,11 +71,9 @@ public:
             sf::Vector2f endPos = sf::Vector2f(m_random->getNextInt(m_size.x * 0.8f, m_size.x * 0.95f), m_random->getNextInt(m_size.y * 0.8f, m_size.y * 0.95f));
             m_room = sf::RectangleShape(endPos - m_roomPosition);
             m_room.setPosition(m_roomPosition + m_position);
-            // m_room.setFillColor(sf::Color(rand()));
             return;
         }
         bool vertSplit = m_random->nextBool();
-        std::cout << m_name << "-> " << vertSplit << std::endl;
         if (vertSplit)
         {
             sf::Vector2f nodeSize = sf::Vector2f(m_size.x / 2.f, m_size.y);
